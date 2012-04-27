@@ -1,5 +1,7 @@
 package com.pranav.db.sqlite {
 	import com.pranav.db.sqlite.events.SQLiteResultEvent;
+	import com.pranav.db.sqlite.statements.framework.SavePointManager;
+	import com.pranav.db.sqlite.statements.framework.Transaction;
 	
 	import flash.data.SQLConnection;
 	import flash.data.SQLStatement;
@@ -10,6 +12,7 @@ package com.pranav.db.sqlite {
 	
 	import mx.collections.ArrayCollection;
 	import mx.managers.CursorManager;
+	import mx.utils.StringUtil;
 
 	[Event(name="open", type="flash.events.SQLEvent")]
 	[Event(name="result", type="com.pranav.db.sqlite.events.SQLiteResultEvent")]
@@ -23,15 +26,38 @@ package com.pranav.db.sqlite {
 		private var _stat:SQLStatement;
 		private var _file:File;
 		private var _queue:Array;
-		private var _transActive:Boolean; 
 		private var _execnext:Boolean;
 		
-		public static const BEGIN_TRANSACTION:String="BEGIN TRANSACTION;";
-		public static const END_TRANSACTION:String="END;";
-		public static const ROLLBACK:String="ROLLBACK;";
+		public static const BEGIN_TRANSACTION:String="BEGIN TRANSACTION";
+		public static const END_TRANSACTION:String="END";
+		public static const ROLLBACK:String="ROLLBACK";
+
+		
 
 		public function get backLog():Number {
 			return _queue.length;
+		}
+		
+		private var _transaction:Transaction;
+		public function get transaction():Transaction
+		{
+			return _transaction;
+		}
+		
+		private var _spm:SavePointManager;
+		public function get savePointManager():SavePointManager
+		{
+			return _spm;
+		}
+		
+		private function newTransaction():void {
+			var t:Transaction=new Transaction(this._conn);
+			_transaction=t;
+		}
+		
+		private function newSPManager():void {
+			var spm:SavePointManager=new SavePointManager(this._conn);
+			_spm=spm;
 		}
 		
 		public function get initialized():Boolean {
@@ -49,6 +75,8 @@ package com.pranav.db.sqlite {
 			_conn.openAsync(file);
 			_file=file;
 			
+			newTransaction();
+			newSPManager();
 		}
 		
 		public function disconnect():void {
@@ -64,7 +92,7 @@ package com.pranav.db.sqlite {
 			}
 		}
 
-		public function executeInline(statement:String, parameters:Object=null, transaction:Boolean=false):void {
+		public function executeInline(statement:String, parameters:Object=null):void {
 			var s:SQLStatement=new SQLStatement();
 			s.text=statement;
 
@@ -73,9 +101,6 @@ package com.pranav.db.sqlite {
 					s.parameters[key]=parameters[key];
 				}
 			}
-			/*if(transaction) {
-				executeInline(BEGIN_TRANSACTION);
-			}*/
 			execute(s);
 		}
 
