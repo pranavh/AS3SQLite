@@ -4,6 +4,7 @@ package com.pranav.db.sqlite {
 	import com.pranav.db.sqlite.statements.framework.Transaction;
 	
 	import flash.data.SQLConnection;
+	import flash.data.SQLSchemaResult;
 	import flash.data.SQLStatement;
 	import flash.events.EventDispatcher;
 	import flash.events.SQLErrorEvent;
@@ -15,6 +16,7 @@ package com.pranav.db.sqlite {
 	import mx.utils.StringUtil;
 
 	[Event(name="open", type="flash.events.SQLEvent")]
+	[Event(name="schema", type="flash.events.SQLEvent")]
 	[Event(name="result", type="com.pranav.db.sqlite.events.SQLiteResultEvent")]
 	[Event(name="error", type="flash.events.SQLErrorEvent")]
 	public class SQLite extends EventDispatcher {
@@ -63,8 +65,17 @@ package com.pranav.db.sqlite {
 		public function get initialized():Boolean {
 			return _conn!=null && _conn.connected;
 		}
+		
+		public function get lastSchema():SQLSchemaResult {
+			return _conn.getSchemaResult();
+		}
+		
+		public function refreshSchema():void {
+			_conn.addEventListener(SQLEvent.SCHEMA, function(e:SQLEvent):void{dispatchEvent(e)});
+			_conn.loadSchema();
+		}
 
-		public function initialize(file:File):void {
+		public function initialize(file:File, asyncMode:Boolean=true):void {
 			if(!file.parent.exists) {
 				file.parent.createDirectory();
 			}
@@ -72,7 +83,11 @@ package com.pranav.db.sqlite {
 			_conn.addEventListener(SQLEvent.OPEN, onDatabaseOpen);
 			_conn.addEventListener(SQLErrorEvent.ERROR, errorHandler);
 
-			_conn.openAsync(file);
+			if(asyncMode) {
+				_conn.openAsync(file);
+			} else {
+				_conn.open(file);
+			}
 			_file=file;
 			
 			newTransaction();
@@ -140,6 +155,7 @@ package com.pranav.db.sqlite {
 		}
 
 		private function onDatabaseOpen(e:SQLEvent):void {
+			refreshSchema();
 			if(_execnext) {
 				nextStatement();
 			}

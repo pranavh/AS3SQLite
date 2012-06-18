@@ -4,10 +4,11 @@ package com.pranav.db.sqlite.statements.framework {
 	import flash.data.SQLStatement;
 
 	public class Table {
+		
 		public function Table(tname:String, dbname:String="main") {
 			name=tname;
 			database=dbname;
-			
+			//factory=cfactory;
 			if(dbname.length > 0) {
 				fullName=dbname + "." + name;
 			} else {
@@ -15,6 +16,8 @@ package com.pranav.db.sqlite.statements.framework {
 			}
 			//constraint=new TableConstraint("tbl_constraint_" + tname);
 		}
+		
+		public var factory:Class; 
 
 		public var name:String;
 		public var constraint:TableConstraint;
@@ -49,6 +52,7 @@ package com.pranav.db.sqlite.statements.framework {
 		public function asSelectAllStatement():SQLStatement {
 			var s:SQLStatement=new SQLStatement();
 			s.text=this.asSelectAll();
+			s.itemClass=factory;
 			return s;
 		}
 		
